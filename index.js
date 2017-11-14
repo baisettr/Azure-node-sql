@@ -27,7 +27,7 @@ var config =
         server: '', // update me
         options:
             {
-                database: 'osu' //update 
+                database: '' //update 
                 , encrypt: true
             }
     }
@@ -125,8 +125,19 @@ app.post("/regUser", function (req, res) {
 
 app.post("/updateUser", function (req, res) {
     res.contentType('application/json');
+    if (!req.body.userFirstName) {
+        req.body.userSkills = null;
+    }
+    if (!req.body.userLastName) {
+        req.body.userMajor = null;
+    }
+    if (!req.body.userPassword) {
+        req.body.userPhone = null;
+    }
+    if (!req.body.userEmail) {
+        req.body.studyYear = null;
+    }
     if (!req.body.userSkills) {
-        //console.log("2");
         req.body.userSkills = null;
     }
     if (!req.body.userMajor) {
@@ -365,6 +376,88 @@ app.post("/acceptUser", function (req, res) {
     });
 });
 
+app.post("/getMailBox", function (req, res) {
+    res.contentType('application/json');
+    getMailBox(req.body.recv_id, (err, results) => {
+        console.log(err + "__" + results);
+        if (err) {
+            console.log(err);
+            var user = { "error": "Internal Error. \n       Please Try Again" };
+            var peopleJSON = JSON.stringify(user);
+            //console.log(peopleJSON);
+            res.send(peopleJSON);
+        }
+        if (results == 0) {
+            var user = { "error": "No Messages Found. \n       Please Try Again" };
+            var peopleJSON = JSON.stringify(user);
+            //console.log(peopleJSON);
+            res.send(peopleJSON);
+        }
+        else {
+            console.log(results);
+            res.contentType('application/json');
+            res.send(user = { "success1": results });
+            var peopleJSON = JSON.stringify(user);
+
+            //res.send(peopleJSON);
+        }
+    });
+});
+
+app.post("/getMessages", function (req, res) {
+
+    getMessages(req.body.recv_id, req.body.send_id, (err, results) => {
+
+        if (err) {
+            console.log(err);
+            var user = { "error": "Internal Error. \n       Please Try Again" };
+            var peopleJSON = JSON.stringify(user);
+            //console.log(peopleJSON);
+            res.send(peopleJSON);
+        }
+        if (results == 0) {
+            var user = { "error": "No Messages Found. \n       Please Try Again" };
+            var peopleJSON = JSON.stringify(user);
+            //console.log(peopleJSON);
+            res.send(peopleJSON);
+        }
+        else {
+
+            res.contentType('application/json');
+            return res.send(user = { "success1": results });
+            var peopleJSON = JSON.stringify(user);
+
+            //res.send(peopleJSON);
+        }
+    });
+});
+
+app.post("/insertMessage", function (req, res) {
+    //console.log(req.body.userId + "__" + req.body.user);
+
+    res.contentType('application/json');
+
+    insertMessage(req.body.recv_id, req.body.send_id, req.body.message, (err, results) => {
+        console.log(err + "___" + results);
+        if (err) {
+            var user = { "error": "Internal Error. \n       Please Try Again" };
+            var peopleJSON = JSON.stringify(user);
+            res.send(user);
+        }
+        else if (results == 1) {
+            var user = { "success": "Message Sent" }
+            var peopleJSON = JSON.stringify(user);
+            res.send(peopleJSON);
+        }
+        else {
+            var user = { "error": "Message Not Sent" }
+            var peopleJSON = JSON.stringify(user);
+            res.send(peopleJSON);
+        }
+    });
+
+});
+
 
 
 app.get('/val', function (req, res) {
@@ -516,7 +609,7 @@ function updateDatabase(userId, userPassword, userFirstName, userLastName, userE
 
     var sql = 'update users set userPassword = @pwd,userFirstName=@fname,userLastName=@lname,userEmail=@email,userSkills=@skill,userMajor=@major,userPhone=@phone,studyYear=@year where userId=@id';
     var request = new Request(sql, function (err, rowCount, row) {
-        //console.log(err);
+        console.log(err);
         callback(false, rowCount);
         //process.exit();
     });
@@ -728,6 +821,197 @@ function selectLocations(userId, callback) {
     connection.execSql(request);
 }
 
+
+function getMailBox(recv_id, callback) {
+    //var connection = new Connection(config);
+    connection.on('connect', function (err) {
+        if (err) {
+            callback(err)
+        }
+    });
+    var TYPES = require('tedious').TYPES;
+
+    var sql = 'select friendId,userStatus from usersStatus where userId=@rId';
+    var rowCnt = 0;
+    var array = [];
+    var request = new Request(sql, function (err, rowCount, row) {
+        if (err) {
+            console.log(err);
+            callback(err);
+        };
+        if (rowCount == 0) {
+            callback(false, rowCount);
+        };
+        rowCnt = rowCount;
+        console.log(rowCnt + "__" + rowCount);
+        console.log(array.length);
+        console.log(array);
+        if (array.length == rowCnt * 2) {
+            callback(false, array);
+        }
+        //process.exit();
+    });
+    request.addParameter('rId', TYPES.VarChar, recv_id);
+    //request.addParameter('sId', TYPES.VarChar, send_id);
+    //request.addParameter('name', TYPES.VarChar, userId);
+    //request.addParameter('id', TYPES.Int, 1);
+
+    request.on('row', function (columns) {
+        //console.log(columns);
+        /*var i = 0;
+        columns.forEach(function (column) {
+            var title1 = column.metadata.colName;
+            var value1 = column.value;
+            var user = {
+                title: title1,
+                value: value1
+            }
+            array.push(user);
+            i = i + 1;
+            //console.log("%s\t%s", column.metadata.colName, column.value);
+        });
+        //console.log(array);
+        //console.log("here1");
+        if (array.length == 10) {
+            callback(false, array);
+        }*/
+        //var array = [];
+        async.each(columns,
+            function (column, next) {
+                var title1 = column.metadata.colName;
+                var value1 = column.value;
+                var user = {
+                    title: title1,
+                    value: value1
+                }
+                array.push(user);
+                //console.log("here 1");
+                next();
+            },
+            function () {
+                //console.log("here 2");
+                returnArray(array);
+            }
+        );
+    });
+    function returnArray(arr) {
+        //console.log("here 3");
+        //console.log(arr.length);
+        //console.log(rowCnt);
+        if (arr.length == rowCnt) {
+            callback(false, arr);
+        }
+    }
+    connection.execSql(request);
+}
+
+function getMessages(recv_id, send_id, callback) {
+    //var connection = new Connection(config);
+    connection.on('connect', function (err) {
+        if (err) {
+            callback(err)
+        }
+    });
+    var TYPES = require('tedious').TYPES;
+
+    var sql = 'select * from usersMailBox where recv_id in (@rId,@sId) and send_id in (@sId,@rId) order by date_sent desc';
+    var rowCnt = 0;
+    var array = [];
+    var request = new Request(sql, function (err, rowCount, row) {
+        if (err) {
+            console.log(err);
+            callback(err);
+        };
+        if (rowCount == 0) {
+            callback(false, rowCount);
+        };
+        rowCnt = rowCount;
+        console.log(rowCnt + "__" + rowCount);
+        console.log(array.length);
+        console.log(array);
+        if (array.length == rowCnt * 4) {
+            callback(false, array);
+        }
+        //process.exit();
+    });
+    request.addParameter('rId', TYPES.VarChar, recv_id);
+    request.addParameter('sId', TYPES.VarChar, send_id);
+    //request.addParameter('name', TYPES.VarChar, userId);
+    //request.addParameter('id', TYPES.Int, 1);
+
+    request.on('row', function (columns) {
+        //console.log(columns);
+        /*var i = 0;
+        columns.forEach(function (column) {
+            var title1 = column.metadata.colName;
+            var value1 = column.value;
+            var user = {
+                title: title1,
+                value: value1
+            }
+            array.push(user);
+            i = i + 1;
+            //console.log("%s\t%s", column.metadata.colName, column.value);
+        });
+        //console.log(array);
+        //console.log("here1");
+        if (array.length == 10) {
+            callback(false, array);
+        }*/
+        //var array = [];
+        async.each(columns,
+            function (column, next) {
+                var title1 = column.metadata.colName;
+                var value1 = column.value;
+                var user = {
+                    title: title1,
+                    value: value1
+                }
+                array.push(user);
+                //console.log("here 1");
+                next();
+            },
+            function () {
+                //console.log("here 2");
+                returnArray(array);
+            }
+        );
+    });
+    function returnArray(arr) {
+        //console.log("here 3");
+        //console.log(arr.length);
+        //console.log(rowCnt);
+        if (arr.length == rowCnt) {
+            callback(false, arr);
+        }
+    }
+    connection.execSql(request);
+}
+
+function insertMessage(recv_id, send_id, message, callback) {
+    //var connection = new Connection(config);
+    connection.on('connect', function (err) {
+        if (err) {
+            callback(err);
+        }
+    });
+    var TYPES = require('tedious').TYPES;
+
+    var sql = 'insert into usersMailBox(recv_id,send_id,message_content) values(@id,@id1,@msg)';
+    var request = new Request(sql, function (err, rowCount, row) {
+        //console.log(err);
+        callback(err, rowCount);
+        //process.exit();
+    });
+    //request.addParameter('id', TYPES.Int, 2);
+    //console.log("1" + userSkills);
+    request.addParameter('id', TYPES.VarChar, recv_id);
+    request.addParameter('id1', TYPES.VarChar, send_id);
+    request.addParameter('msg', TYPES.VarChar, message);
+    //request.addParameter('stat', TYPES.VarChar, userStatus);
+
+    connection.execSql(request);
+}
 
 app.listen(app.get('port'), function () {
     console.log('Node app is running on port', app.get('port'));
